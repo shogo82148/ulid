@@ -216,28 +216,56 @@ func parse(v []byte, strict bool, id *ULID) error {
 		return ErrOverflow
 	}
 
-	// Use an optimized unrolled loop (from https://github.com/RobThree/NUlid)
-	// to decode a base32 ULID.
+	// Use an optimized unrolled loop to decode a base32 ULID.
+
+	h := uint64(dec[v[0]])<<61 |
+		uint64(dec[v[1]])<<56 |
+		uint64(dec[v[2]])<<51 |
+		uint64(dec[v[3]])<<46 |
+		uint64(dec[v[4]])<<41 |
+		uint64(dec[v[5]])<<36 |
+		uint64(dec[v[6]])<<31 |
+		uint64(dec[v[7]])<<26 |
+		uint64(dec[v[8]])<<21 |
+		uint64(dec[v[9]])<<16 |
+		uint64(dec[v[10]])<<11 |
+		uint64(dec[v[11]])<<6 |
+		uint64(dec[v[12]])<<1 |
+		uint64(dec[v[13]])>>4
+
+	l := uint64(dec[v[13]])<<60 |
+		uint64(dec[v[14]])<<55 |
+		uint64(dec[v[15]])<<50 |
+		uint64(dec[v[16]])<<45 |
+		uint64(dec[v[17]])<<40 |
+		uint64(dec[v[18]])<<35 |
+		uint64(dec[v[19]])<<30 |
+		uint64(dec[v[20]])<<25 |
+		uint64(dec[v[21]])<<20 |
+		uint64(dec[v[22]])<<15 |
+		uint64(dec[v[23]])<<10 |
+		uint64(dec[v[24]])<<5 |
+		uint64(dec[v[25]])
 
 	// 6 bytes timestamp (48 bits)
-	(*id)[0] = (dec[v[0]] << 5) | dec[v[1]]
-	(*id)[1] = (dec[v[2]] << 3) | (dec[v[3]] >> 2)
-	(*id)[2] = (dec[v[3]] << 6) | (dec[v[4]] << 1) | (dec[v[5]] >> 4)
-	(*id)[3] = (dec[v[5]] << 4) | (dec[v[6]] >> 1)
-	(*id)[4] = (dec[v[6]] << 7) | (dec[v[7]] << 2) | (dec[v[8]] >> 3)
-	(*id)[5] = (dec[v[8]] << 5) | dec[v[9]]
+	(*id)[0] = byte(h >> 56)
+	(*id)[1] = byte(h >> 48)
+	(*id)[2] = byte(h >> 40)
+	(*id)[3] = byte(h >> 32)
+	(*id)[4] = byte(h >> 24)
+	(*id)[5] = byte(h >> 16)
 
 	// 10 bytes of entropy (80 bits)
-	(*id)[6] = (dec[v[10]] << 3) | (dec[v[11]] >> 2)
-	(*id)[7] = (dec[v[11]] << 6) | (dec[v[12]] << 1) | (dec[v[13]] >> 4)
-	(*id)[8] = (dec[v[13]] << 4) | (dec[v[14]] >> 1)
-	(*id)[9] = (dec[v[14]] << 7) | (dec[v[15]] << 2) | (dec[v[16]] >> 3)
-	(*id)[10] = (dec[v[16]] << 5) | dec[v[17]]
-	(*id)[11] = (dec[v[18]] << 3) | dec[v[19]]>>2
-	(*id)[12] = (dec[v[19]] << 6) | (dec[v[20]] << 1) | (dec[v[21]] >> 4)
-	(*id)[13] = (dec[v[21]] << 4) | (dec[v[22]] >> 1)
-	(*id)[14] = (dec[v[22]] << 7) | (dec[v[23]] << 2) | (dec[v[24]] >> 3)
-	(*id)[15] = (dec[v[24]] << 5) | dec[v[25]]
+	(*id)[6] = byte(h >> 8)
+	(*id)[7] = byte(h)
+	(*id)[8] = byte(l >> 56)
+	(*id)[9] = byte(l >> 48)
+	(*id)[10] = byte(l >> 40)
+	(*id)[11] = byte(l >> 32)
+	(*id)[12] = byte(l >> 24)
+	(*id)[13] = byte(l >> 16)
+	(*id)[14] = byte(l >> 8)
+	(*id)[15] = byte(l)
 
 	return nil
 }
