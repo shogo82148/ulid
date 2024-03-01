@@ -175,35 +175,39 @@ func parse(v []byte, strict bool, id *ULID) error {
 		return ErrDataSize
 	}
 
+	// Use an optimized unrolled loop to decode a base32 ULID.
+	h := uint64(dec[v[0]])<<45 |
+		uint64(dec[v[1]])<<40 |
+		uint64(dec[v[2]])<<35 |
+		uint64(dec[v[3]])<<30 |
+		uint64(dec[v[4]])<<25 |
+		uint64(dec[v[5]])<<20 |
+		uint64(dec[v[6]])<<15 |
+		uint64(dec[v[7]])<<10 |
+		uint64(dec[v[8]])<<5 |
+		uint64(dec[v[9]])
+
+	m := uint64(dec[v[10]])<<35 |
+		uint64(dec[v[11]])<<30 |
+		uint64(dec[v[12]])<<25 |
+		uint64(dec[v[13]])<<20 |
+		uint64(dec[v[14]])<<15 |
+		uint64(dec[v[15]])<<10 |
+		uint64(dec[v[16]])<<5 |
+		uint64(dec[v[17]])
+
+	l := uint64(dec[v[18]])<<35 |
+		uint64(dec[v[19]])<<30 |
+		uint64(dec[v[20]])<<25 |
+		uint64(dec[v[21]])<<20 |
+		uint64(dec[v[22]])<<15 |
+		uint64(dec[v[23]])<<10 |
+		uint64(dec[v[24]])<<5 |
+		uint64(dec[v[25]])
+
 	// Check if all the characters in a base32 encoded ULID are part of the
 	// expected base32 character set.
-	if strict &&
-		(dec[v[0]] == 0xFF ||
-			dec[v[1]] == 0xFF ||
-			dec[v[2]] == 0xFF ||
-			dec[v[3]] == 0xFF ||
-			dec[v[4]] == 0xFF ||
-			dec[v[5]] == 0xFF ||
-			dec[v[6]] == 0xFF ||
-			dec[v[7]] == 0xFF ||
-			dec[v[8]] == 0xFF ||
-			dec[v[9]] == 0xFF ||
-			dec[v[10]] == 0xFF ||
-			dec[v[11]] == 0xFF ||
-			dec[v[12]] == 0xFF ||
-			dec[v[13]] == 0xFF ||
-			dec[v[14]] == 0xFF ||
-			dec[v[15]] == 0xFF ||
-			dec[v[16]] == 0xFF ||
-			dec[v[17]] == 0xFF ||
-			dec[v[18]] == 0xFF ||
-			dec[v[19]] == 0xFF ||
-			dec[v[20]] == 0xFF ||
-			dec[v[21]] == 0xFF ||
-			dec[v[22]] == 0xFF ||
-			dec[v[23]] == 0xFF ||
-			dec[v[24]] == 0xFF ||
-			dec[v[25]] == 0xFF) {
+	if strict && (h|m|l)&(1<<63) != 0 {
 		return ErrInvalidCharacters
 	}
 
@@ -216,51 +220,20 @@ func parse(v []byte, strict bool, id *ULID) error {
 		return ErrOverflow
 	}
 
-	// Use an optimized unrolled loop to decode a base32 ULID.
-
-	h := uint64(dec[v[0]])<<61 |
-		uint64(dec[v[1]])<<56 |
-		uint64(dec[v[2]])<<51 |
-		uint64(dec[v[3]])<<46 |
-		uint64(dec[v[4]])<<41 |
-		uint64(dec[v[5]])<<36 |
-		uint64(dec[v[6]])<<31 |
-		uint64(dec[v[7]])<<26 |
-		uint64(dec[v[8]])<<21 |
-		uint64(dec[v[9]])<<16 |
-		uint64(dec[v[10]])<<11 |
-		uint64(dec[v[11]])<<6 |
-		uint64(dec[v[12]])<<1 |
-		uint64(dec[v[13]])>>4
-
-	l := uint64(dec[v[13]])<<60 |
-		uint64(dec[v[14]])<<55 |
-		uint64(dec[v[15]])<<50 |
-		uint64(dec[v[16]])<<45 |
-		uint64(dec[v[17]])<<40 |
-		uint64(dec[v[18]])<<35 |
-		uint64(dec[v[19]])<<30 |
-		uint64(dec[v[20]])<<25 |
-		uint64(dec[v[21]])<<20 |
-		uint64(dec[v[22]])<<15 |
-		uint64(dec[v[23]])<<10 |
-		uint64(dec[v[24]])<<5 |
-		uint64(dec[v[25]])
-
 	// 6 bytes timestamp (48 bits)
-	(*id)[0] = byte(h >> 56)
-	(*id)[1] = byte(h >> 48)
-	(*id)[2] = byte(h >> 40)
-	(*id)[3] = byte(h >> 32)
-	(*id)[4] = byte(h >> 24)
-	(*id)[5] = byte(h >> 16)
+	(*id)[0] = byte(h >> 40)
+	(*id)[1] = byte(h >> 32)
+	(*id)[2] = byte(h >> 24)
+	(*id)[3] = byte(h >> 16)
+	(*id)[4] = byte(h >> 8)
+	(*id)[5] = byte(h)
 
 	// 10 bytes of entropy (80 bits)
-	(*id)[6] = byte(h >> 8)
-	(*id)[7] = byte(h)
-	(*id)[8] = byte(l >> 56)
-	(*id)[9] = byte(l >> 48)
-	(*id)[10] = byte(l >> 40)
+	(*id)[6] = byte(m >> 32)
+	(*id)[7] = byte(m >> 24)
+	(*id)[8] = byte(m >> 16)
+	(*id)[9] = byte(m >> 8)
+	(*id)[10] = byte(m)
 	(*id)[11] = byte(l >> 32)
 	(*id)[12] = byte(l >> 24)
 	(*id)[13] = byte(l >> 16)
@@ -347,12 +320,11 @@ func (id ULID) MarshalText() ([]byte, error) {
 // MarshalTextTo writes the ULID as a string to the given buffer.
 // ErrBufferSize is returned when the len(dst) != 26.
 func (id ULID) MarshalTextTo(dst []byte) error {
-	// Optimized unrolled loop ahead.
-
 	if len(dst) != EncodedSize {
 		return ErrBufferSize
 	}
 
+	// Optimized unrolled loop ahead.
 	h := uint64(id[0])<<56 | uint64(id[1])<<48 | uint64(id[2])<<40 |
 		uint64(id[3])<<32 | uint64(id[4])<<24 | uint64(id[5])<<16 |
 		uint64(id[6])<<8 | uint64(id[7])
@@ -394,34 +366,34 @@ func (id ULID) MarshalTextTo(dst []byte) error {
 }
 
 // Byte to index table for O(1) lookups when unmarshaling.
-// We use 0xFF as sentinel value for invalid indexes.
-var dec = [...]byte{
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x01,
-	0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
-	0x0F, 0x10, 0x11, 0xFF, 0x12, 0x13, 0xFF, 0x14, 0x15, 0xFF,
-	0x16, 0x17, 0x18, 0x19, 0x1A, 0xFF, 0x1B, 0x1C, 0x1D, 0x1E,
-	0x1F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0A, 0x0B, 0x0C,
-	0x0D, 0x0E, 0x0F, 0x10, 0x11, 0xFF, 0x12, 0x13, 0xFF, 0x14,
-	0x15, 0xFF, 0x16, 0x17, 0x18, 0x19, 0x1A, 0xFF, 0x1B, 0x1C,
-	0x1D, 0x1E, 0x1F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+// We use -1 as sentinel value for invalid indexes.
+var dec = [...]int8{
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, 0x00, 0x01,
+	0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, -1, -1,
+	-1, -1, -1, -1, -1, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
+	0x0F, 0x10, 0x11, -1, 0x12, 0x13, -1, 0x14, 0x15, -1,
+	0x16, 0x17, 0x18, 0x19, 0x1A, -1, 0x1B, 0x1C, 0x1D, 0x1E,
+	0x1F, -1, -1, -1, -1, -1, -1, 0x0A, 0x0B, 0x0C,
+	0x0D, 0x0E, 0x0F, 0x10, 0x11, -1, 0x12, 0x13, -1, 0x14,
+	0x15, -1, 0x16, 0x17, 0x18, 0x19, 0x1A, -1, 0x1B, 0x1C,
+	0x1D, 0x1E, 0x1F, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1,
 }
 
 // EncodedSize is the length of a text encoded ULID.
