@@ -325,40 +325,42 @@ func (id ULID) MarshalTextTo(dst []byte) error {
 	}
 
 	// Optimized unrolled loop ahead.
-	a := uint32(id[0])<<24 | uint32(id[1])<<16 | uint32(id[2])<<8 | uint32(id[3])
-	b := uint32(id[4])<<24 | uint32(id[5])<<16 | uint32(id[6])<<8 | uint32(id[7])
-	c := uint32(id[8])<<24 | uint32(id[9])<<16 | uint32(id[10])<<8 | uint32(id[11])
-	d := uint32(id[12])<<24 | uint32(id[13])<<16 | uint32(id[14])<<8 | uint32(id[15])
+	h := uint64(id[0])<<56 | uint64(id[1])<<48 | uint64(id[2])<<40 |
+		uint64(id[3])<<32 | uint64(id[4])<<24 | uint64(id[5])<<16 |
+		uint64(id[6])<<8 | uint64(id[7])
+	l := uint64(id[8])<<56 | uint64(id[9])<<48 | uint64(id[10])<<40 |
+		uint64(id[11])<<32 | uint64(id[12])<<24 | uint64(id[13])<<16 |
+		uint64(id[14])<<8 | uint64(id[15])
 
 	// 10 byte timestamp
-	dst[0] = Encoding[(a>>29)&0x1f]
-	dst[1] = Encoding[(a>>24)&0x1f]
-	dst[2] = Encoding[(a>>19)&0x1f]
-	dst[3] = Encoding[(a>>14)&0x1f]
-	dst[4] = Encoding[(a>>9)&0x1f]
-	dst[5] = Encoding[(a>>4)&0x1f]
-	dst[6] = Encoding[(a<<1|b>>31)&0x1f]
-	dst[7] = Encoding[(b>>26)&0x1f]
-	dst[8] = Encoding[(b>>21)&0x1f]
-	dst[9] = Encoding[(b>>16)&0x1f]
+	dst[0] = Encoding[(h>>61)&0x1f]
+	dst[1] = Encoding[(h>>56)&0x1f]
+	dst[2] = Encoding[(h>>51)&0x1f]
+	dst[3] = Encoding[(h>>46)&0x1f]
+	dst[4] = Encoding[(h>>41)&0x1f]
+	dst[5] = Encoding[(h>>36)&0x1f]
+	dst[6] = Encoding[(h>>31)&0x1f]
+	dst[7] = Encoding[(h>>26)&0x1f]
+	dst[8] = Encoding[(h>>21)&0x1f]
+	dst[9] = Encoding[(h>>16)&0x1f]
 
 	// 16 bytes of entropy
-	dst[10] = Encoding[b>>11&0x1f]
-	dst[11] = Encoding[b>>6&0x1f]
-	dst[12] = Encoding[b>>1&0x1f]
-	dst[13] = Encoding[((b<<4)|(c>>28))&0x1f]
-	dst[14] = Encoding[(c>>23)&0x1f]
-	dst[15] = Encoding[(c>>18)&0x1f]
-	dst[16] = Encoding[(c>>13)&0x1f]
-	dst[17] = Encoding[(c>>8)&0x1f]
-	dst[18] = Encoding[(c>>3)&0x1f]
-	dst[19] = Encoding[(c<<2|d>>30)&0x1f]
-	dst[20] = Encoding[(d>>25)&0x1f]
-	dst[21] = Encoding[(d>>20)&0x1f]
-	dst[22] = Encoding[(d>>15)&0x1f]
-	dst[23] = Encoding[(d>>10)&0x1f]
-	dst[24] = Encoding[(d>>5)&0x1f]
-	dst[25] = Encoding[d&0x1f]
+	dst[10] = Encoding[h>>11&0x1f]
+	dst[11] = Encoding[h>>6&0x1f]
+	dst[12] = Encoding[h>>1&0x1f]
+	dst[13] = Encoding[((h<<4)|(l>>60))&0x1f]
+	dst[14] = Encoding[(l>>55)&0x1f]
+	dst[15] = Encoding[(l>>50)&0x1f]
+	dst[16] = Encoding[(l>>45)&0x1f]
+	dst[17] = Encoding[(l>>40)&0x1f]
+	dst[18] = Encoding[(l>>35)&0x1f]
+	dst[19] = Encoding[(l>>30)&0x1f]
+	dst[20] = Encoding[(l>>25)&0x1f]
+	dst[21] = Encoding[(l>>20)&0x1f]
+	dst[22] = Encoding[(l>>15)&0x1f]
+	dst[23] = Encoding[(l>>10)&0x1f]
+	dst[24] = Encoding[(l>>5)&0x1f]
+	dst[25] = Encoding[l&0x1f]
 
 	return nil
 }
